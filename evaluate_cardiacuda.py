@@ -15,8 +15,7 @@ from utils.tools import get_world_size, get_global_rank, get_local_rank, get_mas
 from utils.SSIM_metric import SSIM
 from utils.PSNR_metric import PSNR
 from datasets.phhk_dataset import PHHKDataset
-# from datasets.pah_dataset_test import Seg_PAHDataset
-from datasets.pah_all_labelled import Seg_PAHDataset
+from GPTrack.datasets.cardiacuda_dataset_all_labelled import CardiacUDA_ALL_Label
 from monai.data import DataLoader
 
 import cv2
@@ -43,7 +42,7 @@ class Eval:
         # self.RViT.load_state_dict(pretrain_params)
 
         args.dataset_path = r'/home/jyangcu/Dataset/dataset_pa_iltrasound_nill_files_clean_image'
-        valid_dataset = Seg_PAHDataset('/home/jyangcu/Dataset/dataset_pa_iltrasound_nill_files_clean_image/label_all_frame', view_num=['4'], length = args.image_size[-1])
+        valid_dataset = CardiacUDA_ALL_Label('/home/jyangcu/Dataset/dataset_pa_iltrasound_nill_files_clean_image/label_all_frame', view_num=['4'], length = args.image_size[-1])
         self.valid_loader  = DataLoader(valid_dataset, batch_size=1, shuffle=False, num_workers=1)
         self.SSIM_metric = SSIM(window_size = 8)
         self.PSNR_metric = PSNR()

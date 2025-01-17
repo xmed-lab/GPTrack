@@ -16,7 +16,7 @@ random.seed(7777)
 np.random.seed(7777)
 
 
-class Seg_PAHDataset(Dataset):
+class CardiacUDA_Dataset(Dataset):
     def __init__(self, args, is_train=True, is_test=False, set_select=['gy'], view_num=['3'], is_video=True):
         self.args = args
         self.root = args.dataset_path
@@ -49,10 +49,10 @@ class Seg_PAHDataset(Dataset):
         self.all_cases = self.get_dict()
         self.data_list = list(self.all_cases.keys())
         
-        # self.train_list = self.all_data[:int(self.num_data * 0.9)]
-        # self.valid_list = list(set(self.all_data).difference(set(self.train_list)))
-        # self.data_list = self.train_list if is_train else self.valid_list
-        # self.data_list.sort()
+        self.train_list = self.all_data[:int(self.num_data * 0.9)]
+        self.valid_list = list(set(self.all_data).difference(set(self.train_list)))
+        self.data_list = self.train_list if is_train else self.valid_list
+        self.data_list.sort()
 
     def __getitem__(self, index):
         def get_frame_list(index):
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     data_dict = dict()
     from monai.data import DataLoader
     from torchvision import utils as vutils
-    train_ds = Seg_PAHDataset(args, set_select=['gy','szfw','rmyy','shph'], view_num=['1','2','3','4'])
+    train_ds = CardiacUDA_Dataset(args, set_select=['gy','szfw','rmyy','shph'], view_num=['1','2','3','4'])
     train_loader = DataLoader(train_ds, batch_size=4, shuffle=True, num_workers=1)
     from einops import rearrange
     for img in tqdm(train_loader):

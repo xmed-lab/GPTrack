@@ -11,8 +11,8 @@ from torchvision import utils as vutils
 from models.GPTrack_2D import GPTrack2D
 from einops import rearrange
 from utils.tools import get_world_size, get_global_rank, get_local_rank, get_master_ip
-from datasets.pah_dataset_all import Seg_PAHDataset
-from datasets.pah_all_labelled import Seg_PAHDataset_ALL_Label
+from datasets.cardiacuda_dataset import CardiacUDA_Dataset
+from datasets.cardiacuda_dataset_all_labelled import CardiacUDA_ALL_Label
 from monai.data import DataLoader
 from monai.metrics import compute_hausdorff_distance
 
@@ -51,9 +51,9 @@ class Train:
         self.l1loss = torch.nn.L1Loss()
 
         self.prepare_training()
-        train_dataset = Seg_PAHDataset(args, set_select=['gy','rmyy'], view_num=['4'])
+        train_dataset = CardiacUDA_Dataset(args, set_select=['gy','rmyy'], view_num=['4'])
         self.train_loader  = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=8, drop_last=True)
-        valid_dataset = Seg_PAHDataset_ALL_Label('/home/jyangcu/Dataset/dataset_pa_iltrasound_nill_files_clean_image/label_all_frame', view_num=['4'], length = args.image_size[-1])
+        valid_dataset = CardiacUDA_ALL_Label('/home/jyangcu/Dataset/dataset_pa_iltrasound_nill_files_clean_image/label_all_frame', view_num=['4'], length = args.image_size[-1])
         self.valid_loader  = DataLoader(valid_dataset, batch_size=1, shuffle=False, num_workers=1)
 
         print("---- Finish the Dataset Loading ----")

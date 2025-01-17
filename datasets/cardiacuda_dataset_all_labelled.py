@@ -27,7 +27,7 @@ from monai.transforms import (
 cases = ['normal-23', 'normal-27', 'patient-5', 'patient-17', 'patient-35', 
          'patient-39', 'patient-44', 'patient-60', 'patient-64', 'patient-67']
 
-class Seg_PAHDataset_ALL_Label(Dataset):
+class CardiacUDA_ALL_Label(Dataset):
     def __init__(self, root, view_num=['4'], length=32, blurring=True):
         self.root = root
         self.view_num = view_num
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     data_dict = dict()
     
     from monai.data import DataLoader
-    train_ds = Seg_PAHDataset('/home/jyangcu/Dataset/dataset_pa_iltrasound_nill_files_clean_image/label_all_frame', view_num=['4'])
+    train_ds = CardiacUDA_ALL_Label('/home/jyangcu/Dataset/dataset_pa_iltrasound_nill_files_clean_image/label_all_frame', view_num=['4'])
     train_loader = DataLoader(train_ds, batch_size=1, shuffle=False, num_workers=1)
 
     for _ in tqdm(train_loader):
