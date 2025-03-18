@@ -1,4 +1,4 @@
-# NIPS2024: Bidirectional Recurrence for Cardiac Motion Tracking with Gaussian Process Latent Coding
+# NeurIPS 2024: Bidirectional Recurrence for Cardiac Motion Tracking with Gaussian Process Latent Coding
 
 This repository is the official implementation of "Bidirectional Recurrence for Cardiac Motion Tracking with Gaussian Process Latent Coding".
 <img src="./Intro.png">
