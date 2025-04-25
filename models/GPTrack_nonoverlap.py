@@ -431,7 +431,7 @@ class Lagrangian_flow(nn.Module):
 
 class GPTrack2D(nn.Module):
     """ Vision Transformer """
-    def __init__(self, image_size, patch_size, depth, length, heads, int_steps=7, mlp_dim=None, channels=2, dropout=0., emb_dropout=0, bidirection=True):
+    def __init__(self, image_size, patch_size, depth, length, heads, int_steps=7, mlp_dim=None, channels=2, dropout=0., emb_dropout=0, bidirection=True, non_overlap=False):
         super(GPTrack2D, self).__init__()
 
         """
@@ -470,17 +470,22 @@ class GPTrack2D(nn.Module):
         self.flow_log_sigma.weight = nn.Parameter(nd.sample(self.flow_log_sigma.weight.shape))
         self.flow_log_sigma.bias = nn.Parameter(torch.zeros(self.flow_log_sigma.bias.shape))
 
-        self.embedding = nn.Conv2d(channels, hidden_dim, patch_size, patch_size)
-
         # positional embedding
         self.spatial_pos_embedding = nn.Parameter(torch.randn(1, num_patches, hidden_dim))
         self.temporal_pos_embedding = nn.Parameter(torch.randn(1, 128, hidden_dim))
         
+
+        self.non_overlap = non_overlap
+        if self.non_overlap:
+            self.embedding = nn.Conv2d(channels, hidden_dim, patch_size, patch_size)
+        else:
+            self.embedding = nn.ModuleList()
+            for i in range(len(enc_nf)):
+                prev_nf = 2 if i == 0 else enc_nf[i - 1]
+                self.embedding.append(conv_block(dim, prev_nf, enc_nf[i], 2))
+
         # Encoder functions
-        self.enc = nn.ModuleList()
-        for i in range(len(enc_nf)):
-            prev_nf = 2 if i == 0 else enc_nf[i - 1]
-            self.enc.append(conv_block(dim, prev_nf, enc_nf[i], 2))
+        
         
         self.middle_conv_block = conv_block(dim, enc_nf[-1], enc_nf[-1])
 
@@ -490,11 +495,11 @@ class GPTrack2D(nn.Module):
         # velocity filed decoding
         self.dec = nn.ModuleList()
         self.dec.append(conv_block(dim, enc_nf[-1], dec_nf[0]))  # 1
-        self.dec.append(conv_block(dim, dec_nf[0] * 2, dec_nf[1]))  # 2
-        self.dec.append(conv_block(dim, dec_nf[1] * 2, dec_nf[2]))  # 3
-        self.dec.append(conv_block(dim, dec_nf[2] + enc_nf[0], dec_nf[3]))  # 4
+        self.dec.append(conv_block(dim, dec_nf[0] * 2 if self.non_overlap is False else dec_nf[0], dec_nf[1]))  # 2
+        self.dec.append(conv_block(dim, dec_nf[1] * 2 if self.non_overlap is False else dec_nf[1], dec_nf[2]))  # 3
+        self.dec.append(conv_block(dim, dec_nf[2] + enc_nf[0] if self.non_overlap is False else dec_nf[2], dec_nf[3]))  # 4
         self.dec.append(conv_block(dim, dec_nf[3], dec_nf[4]))  # 5
-        self.dec.append(conv_block(dim, dec_nf[4] + 2, dec_nf[5], 1)) # Full size conv
+        self.dec.append(conv_block(dim, dec_nf[4] + 2 if self.non_overlap is False else dec_nf[4], dec_nf[5], 1)) # Full size conv
         self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
 
         # setting the disffeomorph transform
@@ -523,11 +528,16 @@ class GPTrack2D(nn.Module):
         b, t, _, _, _ = cat_X.shape
         input = rearrange(cat_X, 'b t c h w  -> (b t) c h w')
 
-        x_enc = [input]
-        for enc_layer in self.enc:
-            x_enc.append(enc_layer(x_enc[-1]))
-        
-        emb = x_enc[-1]
+        if self.non_overlap:
+            emb = self.embedding(input)
+        else:
+            x_enc = [input]
+            for enc_layer in self.embedding:
+                x_enc.append(enc_layer(x_enc[-1]))
+            
+            emb = x_enc[-1]
+
+
         _, c, p_h, p_w = emb.shape
         emb = rearrange(emb, '(b t) c h w  -> b t c (h w)', b=b, t=t).transpose(-1, -2)
 
@@ -549,13 +559,15 @@ class GPTrack2D(nn.Module):
         for i in range(3):
             y = self.dec[i](y)
             y = self.upsample(y)
-            y = torch.cat([y, x_enc[-(i + 2)]], dim=1)
+            if self.non_overlap is False:
+                y = torch.cat([y, x_enc[-(i + 2)]], dim=1)
         # Two convs at full_size/2 res
         y = self.dec[3](y)
         y = self.dec[4](y)
         # Upsample to full res, concatenate and conv
         y = self.upsample(y)
-        y = torch.cat([y, x_enc[0]], dim=1)
+        if self.non_overlap is False:
+            y = torch.cat([y, x_enc[0]], dim=1)
         y = self.dec[5](y)
         
         flow_mean = self.flow_mean(y)
@@ -680,6 +692,8 @@ if __name__ == '__main__':
 
     vid = torch.randn(1, length + 1, 1, input_size, input_size).cuda(using_device)
     hidden = torch.zeros(1, (input_size//patch_size)**2, mlp_dim).cuda(using_device)
+
+    v(vid, hidden)
 
     from thop import profile, clever_format
     import time
