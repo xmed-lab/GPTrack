@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torchvision import utils as vutils
 from torchvision.transforms import GaussianBlur
 
-from models.RViT_BidTag_light_3d import RViT
+from models.GPTrack_3D import RViT
 # from models.RViT_BidTag import RViT
 from models.segmentation import deeplabv3_resnet50_iekd
 from utils.tools import get_world_size, get_global_rank, get_local_rank, get_master_ip
