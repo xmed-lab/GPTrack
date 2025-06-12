@@ -44,7 +44,6 @@ class ACDC_Dataset(Dataset):
         data=sitk.ReadImage(case['nill_path'])
         data=sitk.GetArrayFromImage(data).astype(np.float32)
         length, depth, height, width = data.shape
-
         data_start_frame_mask=sitk.ReadImage(case['anno_start_path'])
         data_start_frame_mask=sitk.GetArrayFromImage(data_start_frame_mask).astype(np.float32)
         data_start_frame_mask=np.expand_dims(data_start_frame_mask, axis=0)
@@ -88,7 +87,7 @@ class ACDC_Dataset(Dataset):
             data_end_frame_mask_[:, sd:sd + depth] = data_end_frame_mask
             data_end_frame_mask = data_end_frame_mask_
 
-        current_video = self.transform(np.transpose(current_video, axes=(0,2,3,1)))
+        current_video = self.transform(np.transpose(current_video, axes=(0,2,3,1)))   
         current_video = current_video*(self.min_max[1] - self.min_max[0]) + self.min_max[0]
         data_start_frame_mask = self.transform(np.transpose(data_start_frame_mask, axes=(0,2,3,1)))
         data_end_frame_mask = self.transform(np.transpose(data_end_frame_mask, axes=(0,2,3,1)))

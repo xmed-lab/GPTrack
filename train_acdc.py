@@ -29,9 +29,9 @@ class Train:
                          mlp_dim = args.latent_dim,
                          dropout = 0.1,).to(args.device)
         
-        # pretrain_params = torch.load('/home/jyangcu/Pulmonary_Arterial_Hypertension/results/checkpoints/checkpoint_149.pth', map_location='cpu')
-        # pretrain_params = {k.replace('module.', ''): v for k, v in pretrain_params.items() if k.replace('module.', '') in self.RViT.state_dict()}
-        # self.RViT.load_state_dict(pretrain_params)
+        pretrain_params = torch.load('./results/checkpoints/checkpoint_0.pth', map_location='cpu')
+        pretrain_params = {k.replace('module.', ''): v for k, v in pretrain_params.items() if k.replace('module.', '') in self.RViT.state_dict()}
+        self.RViT.load_state_dict(pretrain_params)
         self.optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad, self.RViT.parameters()), lr=args.learning_rate, betas=[args.beta1, args.beta2])
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=50, gamma=0.1)
 
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta2', type=float, default=0.99, help='Adam beta param (default: 0.999)')
     parser.add_argument('--clip-grad', type=bool, default=True, help='perform gradient clipping in training (default: False)')
 
-    parser.add_argument('--enable_GPUs_id', type=list, default=[5], help='The number and order of the enable gpus')
+    parser.add_argument('--enable_GPUs_id', type=list, default=[6], help='The number and order of the enable gpus')
     parser.add_argument('--wandb', type=bool, default=False, help='Enable Wandb')
 
     args = parser.parse_args()

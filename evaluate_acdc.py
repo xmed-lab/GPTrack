@@ -11,11 +11,9 @@ from torchvision.transforms import GaussianBlur
 
 from models.GPTrack_3D import RViT
 # from models.RViT_BidTag import RViT
-from models.segmentation import deeplabv3_resnet50_iekd
 from utils.tools import get_world_size, get_global_rank, get_local_rank, get_master_ip
 from utils.SSIM_metric import SSIM
 from utils.PSNR_metric import PSNR
-from datasets.phhk_dataset import PHHKDataset
 # from datasets.pah_dataset_test import Seg_PAHDataset
 from datasets.ACDC_test import ACDC_Dataset
 from monai.data import DataLoader
@@ -39,11 +37,11 @@ class Eval:
                          mlp_dim = args.latent_dim,
                          dropout = 0.1,).to(args.device)
         
-        pretrain_params = torch.load('/home/jyangcu/Pulmonary_Arterial_Hypertension/results/checkpoints/checkpoint_120.pth', map_location='cpu')
+        pretrain_params = torch.load('./results/checkpoints/checkpoint.pth', map_location='cpu')
         pretrain_params = {k.replace('module.', ''): v for k, v in pretrain_params.items() if k.replace('module.', '') in self.RViT.state_dict()}
         self.RViT.load_state_dict(pretrain_params)
-
-        infos = np.load('/home/jyangcu/Pulmonary_Arterial_Hypertension/datasets/dataset_utils/ACDC_info.npy', allow_pickle=True).item()
+        
+        infos = np.load('./datasets/dataset_utils/ACDC_info.npy', allow_pickle=True).item()
         valid_dataset = ACDC_Dataset(args, infos)
         self.valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False, num_workers=1)
         self.SSIM_metric = SSIM(window_size = 8)
@@ -54,11 +52,10 @@ class Eval:
     def eval(self, args):
         self.RViT.eval()
         record_steps = 0
+        all_info = []
         all_psnr, all_dice, all_ssim, lv_dice, rv_dice, myo_dice, lv_dice = [], [], [], [], [], [], []
         pbar = tqdm(self.valid_loader)
         for step, (vids, start_anno, end_anno, es_f) in enumerate(pbar):
-            if step > 0:
-                break
             hidden = torch.zeros(1, ((args.image_size[0] * args.image_size[1] * args.image_size[2]) // (args.patch_size[0] * args.patch_size[1] * args.patch_size[2])), args.latent_dim).to(args.device)
             _, inf_flow_all, neg_inf_flow_all, lag_flow, neg_lag_flow, lag_register, forward_regsiter, backward_regsiter = self.RViT(vids.to(args.device), hidden, train=False)
 
@@ -90,21 +87,21 @@ class Eval:
                 
                 # For Masks Evaluation
                 if idx == 0:
-                    c_mask = start_anno.transpose(2,3)
-                inf_flow_seg_plt, c_mask = self.plot_seg_warpgrid(vids[0, idx+1, ...], c_mask, end_anno.transpose(2,3), inf_flow_all[idx][0, ...], mark='w')
+                    c_mask = start_anno
+                inf_flow_seg_plt, c_mask = self.plot_seg_warpgrid(vids[0, idx+1, ...], c_mask, end_anno, inf_flow_all[idx][0, ...], mark='w')
 
-                if idx == int(es_f[0]) - 1:
+                if idx == int(es_f[0]) - 2:
                     track_segments = c_mask
 
-                inf_flow_seg_plt.savefig(f'./results/flow_result_eval/inf_flow_seg_warp_{idx}.png',pad_inches=0.0)
-                inf_flow_seg_plt.clf()
+                # inf_flow_seg_plt.savefig(f'./results/flow_result_eval/inf_flow_seg_warp_{idx}.png',pad_inches=0.0)
+                # inf_flow_seg_plt.clf()
 
-            gt_segments = end_anno.transpose(2,3)
+            gt_segments = end_anno
             gt_segments = self.transfor_label(gt_segments)
             track_segments = self.transfor_label(track_segments)
+            pixel_acc, dice, precision, specificity, recall = self._calculate_overlap_metrics(torch.where(gt_segments > 0, 1, 0), torch.where(track_segments > 0, 1, 0))
 
-            pixel_acc, dice, precision, specificity, recall = self._calculate_overlap_metrics(torch.where(gt_segments> 0, 1, 0), torch.where(track_segments > 0, 1, 0))
-            all_dice.append(dice.detach().cpu().numpy())
+            all_dice.append(dice.detach().cpu().numpy().item())
 
             for i in range(3):
                 i_segments_track = track_segments[i, ...]
@@ -131,12 +128,14 @@ class Eval:
             # combine_imgs = torch.cat([orginial_imgs, forward_imgs, backward_imgs, lag_imgs], dim=0)
             # vutils.save_image(combine_imgs.add(1.0).mul(0.5), os.path.join("results/example_result_eval", f"example_{step}.jpg"), nrow=len(inf_flow_all))
 
+
         print("SSIM: Mean:{}, Std:{}".format(np.mean(all_ssim), np.std(all_ssim)))
         print("PSNR: Mean:{}, Std:{}".format(np.mean(all_psnr), np.std(all_psnr)))
         print("DICE: Mean:{}, Std:{}".format(np.mean(all_dice), np.std(all_dice)))
         print("RV_DICE: Mean:{}, Std:{}".format(np.mean(rv_dice), np.std(rv_dice)))
         print("MYO_DICE: Mean:{}, Std:{}".format(np.mean(myo_dice), np.std(myo_dice)))
         print("LV_DICE: Mean:{}, Std:{}".format(np.mean(lv_dice), np.std(lv_dice)))
+
 
     def plot_warpgrid(self, img, warp, segment_result=None, 
                       interval=2, show_axis=False, mark='k', next_frame=None, 
@@ -187,9 +186,7 @@ class Eval:
         warp_save = warp_save[0, ...]
 
         if img is not None:
-            img = img.transpose(1,2)
-            if next_frame is not None:
-                next_img = next_frame.transpose(1,2)
+            img = img
             
             # Get the warpping img
             if get_warp_img:
@@ -347,7 +344,7 @@ class Eval:
         warp_save = warp_save[0, ...]
 
         if img is not None:
-            img = img.transpose(1,2)
+            img = img
             mask = mask.float()
             mask_tgt = mask_tgt.float()
 
