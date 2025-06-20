@@ -360,7 +360,7 @@ def main(rank, args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="EchoNet")
     parser.add_argument('--latent-dim', type=int, default=64, help='Latent dimension n_z (default: 256)')
-    parser.add_argument('--image-size', type=tuple, default=(128, 128, 16), help='Image height and width (default: (112, 112 ,16))')
+    parser.add_argument('--image-size', type=tuple, default=(128, 128, 32), help='Image height and width (default: (112, 112 ,16))')
     parser.add_argument('--image-channels', type=int, default=1, help='Number of channels of images (default: 3)')
     parser.add_argument('--patch-size', type=int, default=(16, 16, 16), help='Patch height and width (default: 8)')
     parser.add_argument('--blurring', type=bool, default=False, help='Whether blur the image')

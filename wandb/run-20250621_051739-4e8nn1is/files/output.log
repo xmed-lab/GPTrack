@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "train_acdc.py", line 402, in <module>
+    main(args.local_rank, args)
+  File "train_acdc.py", line 357, in main
+    Train(args)
+  File "train_acdc.py", line 38, in __init__
+    self.RViT.load_state_dict(pretrain_params)
+  File "/home/jyangcu/miniconda3/envs/pytorch/lib/python3.8/site-packages/torch/nn/modules/module.py", line 2153, in load_state_dict
+    raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
+RuntimeError: Error(s) in loading state_dict for RViT:
+	size mismatch for spatial_pos_embedding: copying a param with shape torch.Size([1, 64, 64]) from checkpoint, the shape in current model is torch.Size([1, 128, 64]).

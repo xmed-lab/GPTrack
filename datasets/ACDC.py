@@ -84,14 +84,14 @@ class ACDC_Dataset(Dataset):
     def preprocess(self, is_train):
         all_dict = dict()
         count = 0
-        # if is_train: 
-        for key in list(self.train_dict.keys()):
-            all_dict[count] = (self.train_dict[key])
-            count += 1
-        # else:
-        for key in list(self.test_dict.keys()):
-            all_dict[count] = (self.test_dict[key])
-            count += 1
+        if is_train: 
+            for key in list(self.train_dict.keys()):
+                all_dict[count] = (self.train_dict[key])
+                count += 1
+        else:
+            for key in list(self.test_dict.keys()):
+                all_dict[count] = (self.test_dict[key])
+                count += 1
         return all_dict
     
     def augment(self, img_list, hflip=True, rot=True, split='val'):

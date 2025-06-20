@@ -1,0 +1,199 @@
+diff --git a/datasets/__pycache__/ACDC.cpython-38.pyc b/datasets/__pycache__/ACDC.cpython-38.pyc
+index dafa010..ce8e509 100644
+Binary files a/datasets/__pycache__/ACDC.cpython-38.pyc and b/datasets/__pycache__/ACDC.cpython-38.pyc differ
+diff --git a/datasets/__pycache__/ACDC_test.cpython-38.pyc b/datasets/__pycache__/ACDC_test.cpython-38.pyc
+index 2fbd92a..d1b59f0 100644
+Binary files a/datasets/__pycache__/ACDC_test.cpython-38.pyc and b/datasets/__pycache__/ACDC_test.cpython-38.pyc differ
+diff --git a/train_acdc.py b/train_acdc.py
+index 6060c1b..9929a47 100644
+--- a/train_acdc.py
++++ b/train_acdc.py
+@@ -33,9 +33,9 @@ class Train:
+                          mlp_dim = args.latent_dim,
+                          dropout = 0.1,).to(args.device)
+         
+-        # pretrain_params = torch.load('./results/checkpoints/checkpoint_0.pth', map_location='cpu')
+-        # pretrain_params = {k.replace('module.', ''): v for k, v in pretrain_params.items() if k.replace('module.', '') in self.RViT.state_dict()}
+-        # self.RViT.load_state_dict(pretrain_params)
++        pretrain_params = torch.load('./results/checkpoints/checkpoint.pth', map_location='cpu')
++        pretrain_params = {k.replace('module.', ''): v for k, v in pretrain_params.items() if k.replace('module.', '') in self.RViT.state_dict()}
++        self.RViT.load_state_dict(pretrain_params)
+         self.optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad, self.RViT.parameters()), lr=args.learning_rate, betas=[args.beta1, args.beta2])
+         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=50, gamma=0.1)
+ 
+@@ -142,21 +142,7 @@ class Train:
+ 
+             print("lag-reg: SSIM ---> {} , PSNR ---> {}".format(ssim_score, psnr_score))
+ 
+-            for idx in tqdm(range(len(inf_flow_all))):
+-                # inf_flow_plt = self.plot_warpgrid(vids_org[0, :, idx, ...], inf_flow_all[idx][0, ...], segment_result, interval=4, mark='r')
+-                # inf_flow_plt.savefig(f'./results/flow_result_eval/inf_flow_img_warp_{idx}.png')
+-                # inf_flow_plt.clf()
+-                
+-                # vutils.save_image(input_vids[0, :, idx, ...].add(1.0).mul(0.5), f'./results/flow_result_eval/org_img_{idx}.png')
+-
+-                # lag_flow_plt = self.plot_warpgrid(lag_register[0][idx], lag_flow[0, :, idx, ...], interval=4, mark='c')
+-                # lag_flow_plt.savefig(f'./results/flow_result_eval/lag_flow_img_warp_{idx}.png')
+-                # lag_flow_plt.clf()
+-
+-                # inf_flow_plt = self.plot_warpgrid(vids[0, :, idx, ...], inf_flow_all[idx][0, ...], interval=8, mark='w', heatmap=False)
+-                # inf_flow_plt.savefig(f'./results/flow_result_eval/inf_flow_heatmap_warp_{idx}.png', pad_inches=0.0)
+-                # inf_flow_plt.clf()
+-
++            for idx in range(len(inf_flow_all)):
+                 # For Masks Evaluation
+                 if idx == 0:
+                     c_mask = start_anno
+@@ -165,47 +151,16 @@ class Train:
+                 if idx == int(es_f[0]) - 2:
+                     track_segments = c_mask
+ 
+-                # inf_flow_seg_plt.savefig(f'./results/flow_result_eval/inf_flow_seg_warp_{idx}.png',pad_inches=0.0)
+-                # inf_flow_seg_plt.clf()
+-
+             gt_segments = end_anno
+-            gt_segments = self.transfor_label(gt_segments)
+-            track_segments = self.transfor_label(track_segments)
+-            pixel_acc, dice, precision, specificity, recall = self._calculate_overlap_metrics(torch.where(gt_segments > 0, 1, 0), torch.where(track_segments > 0, 1, 0))
+-
+-            all_dice.append(dice.detach().cpu().numpy().item())
+-
+-            for i in range(3):
+-                i_segments_track = track_segments[i, ...]
+-                i_segments_gt = gt_segments[i, ...]
+-
+-                _, i_dice, _, _, _ = self._calculate_overlap_metrics(i_segments_gt, i_segments_track)
+-                if i == 0:
+-                    rv_dice.append(i_dice.detach().cpu().numpy())
+-                elif i == 1:
+-                    myo_dice.append(i_dice.detach().cpu().numpy())
+-                elif i == 2:
+-                    lv_dice.append(i_dice.detach().cpu().numpy())
++
++            dice = np.mean(self.dice_ACDC(gt_segments, track_segments)[::3])
++            all_dice.append(dice)
++
+             
+-            print("Pixel Acc is : ", pixel_acc)
+-            print("Dice Score is : ", dice)
+-            print("Precision is : ", precision)
+-            print("Specificity is : ", specificity)
+-            print("Recall is : ", recall)
+-            print("ES Frame Number : ", int(es_f[0])-1)
+-            # orginial_imgs = input_vids[0, :, 1:, ...].transpose(0, 1)
+-            # forward_imgs = torch.stack(forward_regsiter, dim=0)[:, 0, ...].detach().cpu()
+-            # backward_imgs = torch.stack(backward_regsiter, dim=0)[:, 0, ...].detach().cpu()
+-            # lag_imgs = lag_register[0].detach().cpu()
+-            # combine_imgs = torch.cat([orginial_imgs, forward_imgs, backward_imgs, lag_imgs], dim=0)
+-            # vutils.save_image(combine_imgs.add(1.0).mul(0.5), os.path.join("results/example_result_eval", f"example_{step}.jpg"), nrow=len(inf_flow_all))
+ 
+         print("SSIM: Mean:{}, Std:{}".format(np.mean(all_ssim), np.std(all_ssim)))
+         print("PSNR: Mean:{}, Std:{}".format(np.mean(all_psnr), np.std(all_psnr)))
+         print("DICE: Mean:{}, Std:{}".format(np.mean(all_dice), np.std(all_dice)))
+-        print("RV_DICE: Mean:{}, Std:{}".format(np.mean(rv_dice), np.std(rv_dice)))
+-        print("MYO_DICE: Mean:{}, Std:{}".format(np.mean(myo_dice), np.std(myo_dice)))
+-        print("LV_DICE: Mean:{}, Std:{}".format(np.mean(lv_dice), np.std(lv_dice)))
+ 
+ 
+     def plot_seg_warpgrid(self, img, mask, mask_tgt, warp, segment_result=None, 
+@@ -302,43 +257,55 @@ class Train:
+             plt.imshow(img.permute(1, 2, 0).detach().cpu().numpy().astype(np.uint8), cmap='viridis', vmin=0, vmax=255)
+ 
+         return plt, seg_warp
+-    
+-    def draw_grid(self, img, grid_height = 6, grid_width = 6, line_width=5):
+-        height, width, _ = img.shape
+-        img = (img + 1) * 127.5
+-        # img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+-
+-        for x in range(0, width-1, grid_width):
+-            cv2.line(img, (x, 0), (x, height), (255))
+-        for y in range(0, height-1, grid_height):
+-            cv2.line(img, (0, y), (width, y), (255))
+-
+-        img = img / 127.5 - 1
+-
+-        return img
+-
+-    def _calculate_overlap_metrics(self, gt, pred, eps=1e-5):
+-        output = pred.reshape(-1, )
+-        target = gt.reshape(-1, ).float()
+-
+-        tp = torch.sum(output * target)  # TP
+-        fp = torch.sum(output * (1 - target))  # FP
+-        fn = torch.sum((1 - output) * target)  # FN
+-        tn = torch.sum((1 - output) * (1 - target))  # TN
+-
+-        pixel_acc = (tp + tn + eps) / (tp + tn + fp + fn + eps)
+-        dice = (2 * tp + eps) / (2 * tp + fp + fn + eps)
+-        precision = (tp + eps) / (tp + fp + eps)
+-        recall = (tp + eps) / (tp + fn + eps)
+-        specificity = (tn + eps) / (tn + fp + eps)
+-
+-        return pixel_acc, dice, precision, specificity, recall
+ 
+-    def transfor_label(self, seg):
+-        RV  = torch.where(seg == 1, 1, 0)
+-        MYO = torch.where(seg == 2, 1, 0)
+-        LV  = torch.where(seg == 3, 1, 0)
+-        return torch.stack([RV, MYO, LV], dim=0)
++    def dice_ACDC(self, img_gt, img_pred, voxel_size=None):
++        if img_gt.ndim != img_pred.ndim:
++            raise ValueError("The arrays 'img_gt' and 'img_pred' should have the "
++                            "same dimension, {} against {}".format(img_gt.ndim,
++                                                                    img_pred.ndim))
++        # print(np.unique(img_gt))
++        res = []
++        # Loop on each classes of the input images
++        for c in [3, 2, 4, 1, 5]:
++            # Copy the gt image to not alterate the input
++            gt_c_i = np.copy(img_gt)
++
++            if c == 4:
++                gt_c_i[gt_c_i == 2] = c
++                gt_c_i[gt_c_i == 3] = c
++            elif c == 5:
++                gt_c_i[gt_c_i > 0] = c
++            gt_c_i[gt_c_i != c] = 0
++
++            # Copy the pred image to not alterate the input
++            pred_c_i = np.copy(img_pred)
++
++            if c == 4:
++                pred_c_i[pred_c_i == 2] = c
++                pred_c_i[pred_c_i == 3] = c
++            elif c == 5:
++                pred_c_i[pred_c_i > 0] = c
++            pred_c_i[pred_c_i != c] = 0
++
++            # Clip the value to compute the volumes
++            gt_c_i = np.clip(gt_c_i, 0, 1)
++            pred_c_i = np.clip(pred_c_i, 0, 1)
++            # Compute the Dice
++            top = 2 * np.sum(np.logical_and(pred_c_i, gt_c_i))
++            bottom = np.sum(pred_c_i) + np.sum(gt_c_i)
++            bottom = np.maximum(bottom, np.finfo(float).eps)  # add epsilon.
++            dice = top / bottom
++
++            if voxel_size != None:
++                # Compute volume
++                volpred = pred_c_i.sum() * np.prod(voxel_size) / 1000.
++                volgt = gt_c_i.sum() * np.prod(voxel_size) / 1000.
++            else:
++                volpred, volgt = 0, 0
++
++            res += [dice, volpred, volpred-volgt]
++
++        return res
+ 
+ def main(rank, args):
+ 
+@@ -393,7 +360,7 @@ def main(rank, args):
+ if __name__ == '__main__':
+     parser = argparse.ArgumentParser(description="EchoNet")
+     parser.add_argument('--latent-dim', type=int, default=64, help='Latent dimension n_z (default: 256)')
+-    parser.add_argument('--image-size', type=tuple, default=(128, 128, 32), help='Image height and width (default: (112, 112 ,16))')
++    parser.add_argument('--image-size', type=tuple, default=(128, 128, 16), help='Image height and width (default: (112, 112 ,16))')
+     parser.add_argument('--image-channels', type=int, default=1, help='Number of channels of images (default: 3)')
+     parser.add_argument('--patch-size', type=int, default=(16, 16, 16), help='Patch height and width (default: 8)')
+     parser.add_argument('--blurring', type=bool, default=False, help='Whether blur the image')

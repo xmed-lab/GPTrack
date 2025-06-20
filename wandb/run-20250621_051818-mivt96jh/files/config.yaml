@@ -1,0 +1,120 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    code_path: code/train_acdc.py
+    python_version: 3.8.0
+    cli_version: 0.15.0
+    framework: huggingface
+    huggingface_version: 4.45.2
+    is_jupyter_run: false
+    is_kaggle_kernel: true
+    start_time: 1750454298.550671
+    t:
+      1:
+      - 1
+      - 10
+      - 11
+      - 41
+      - 48
+      - 49
+      - 51
+      - 55
+      2:
+      - 1
+      - 10
+      - 11
+      - 41
+      - 48
+      - 49
+      - 51
+      - 55
+      3:
+      - 13
+      - 23
+      4: 3.8.0
+      5: 0.15.0
+      6: 4.45.2
+      8:
+      - 2
+      - 5
+latent_dim:
+  desc: null
+  value: 64
+image_size:
+  desc: null
+  value:
+  - 128
+  - 128
+  - 16
+image_channels:
+  desc: null
+  value: 1
+patch_size:
+  desc: null
+  value:
+  - 16
+  - 16
+  - 16
+blurring:
+  desc: null
+  value: false
+max_sample_rate:
+  desc: null
+  value: 1
+num_heads:
+  desc: null
+  value: 8
+num_layers:
+  desc: null
+  value: 2
+mask_size:
+  desc: null
+  value: 8
+mask_ratio:
+  desc: null
+  value: 0.7
+dataset_path:
+  desc: null
+  value: /home/jyangcu/Dataset/PH_HK_image
+batch_size:
+  desc: null
+  value: 1
+epochs:
+  desc: null
+  value: 150
+learning_rate:
+  desc: null
+  value: 0.0005
+beta1:
+  desc: null
+  value: 0.9
+beta2:
+  desc: null
+  value: 0.99
+clip_grad:
+  desc: null
+  value: true
+enable_GPUs_id:
+  desc: null
+  value:
+  - 0
+wandb:
+  desc: null
+  value: true
+world_size:
+  desc: null
+  value: 1
+init_method:
+  desc: null
+  value: tcp://127.0.0.1:23455
+distributed:
+  desc: null
+  value: false
+local_rank:
+  desc: null
+  value: 0
+global_rank:
+  desc: null
+  value: 0
