@@ -30,7 +30,7 @@ class ACDC_Dataset(Dataset):
         self.test_dict = infos['test']
         self.all_dict = self.preprocess(is_train)
         self.file_list = list(self.all_dict.keys())
-        self.fineSize = [crop_length, 16, 128, 128]
+        self.fineSize = [crop_length, args.image_size[2], args.image_size[0], args.image_size[1]]
 
         self.transform = transforms.Compose([
                                 transform.ToTensorVideo(),
@@ -79,19 +79,19 @@ class ACDC_Dataset(Dataset):
         return current_video.permute(0, 2, 3, 1).unsqueeze(1)
 
     def __len__(self):
-        return len(self.file_list) * 10
+        return len(self.file_list) * 5
     
     def preprocess(self, is_train):
         all_dict = dict()
         count = 0
-        if is_train:
-            for key in list(self.train_dict.keys()):
-                all_dict[count] = (self.train_dict[key])
-                count += 1
-        else:
-            for key in list(self.test_dict.keys()):
-                all_dict[count] = (self.test_dict[key])
-                count += 1
+        # if is_train: 
+        for key in list(self.train_dict.keys()):
+            all_dict[count] = (self.train_dict[key])
+            count += 1
+        # else:
+        for key in list(self.test_dict.keys()):
+            all_dict[count] = (self.test_dict[key])
+            count += 1
         return all_dict
     
     def augment(self, img_list, hflip=True, rot=True, split='val'):

@@ -1,0 +1,137 @@
+---- Finish the Model Loading ----
+---- Finish the Dataset Loading ----
+
+  0%|                                                                                                                                                                                 | 0/1500 [00:00<?, ?it/s]torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /opt/conda/conda-bld/pytorch_1708025829503/work/aten/src/ATen/native/TensorShape.cpp:3549.)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  7%|███████████▉                                                                                                                                                         | 109/1500 [06:09<1:16:47,  3.31s/it]Exception ignored in: <function _MultiProcessingDataLoaderIter.__del__ at 0x7f39df283280>
+Traceback (most recent call last):
+  File "/home/jyangcu/miniconda3/envs/pytorch/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 1479, in __del__
+    self._shutdown_workers()
+  File "/home/jyangcu/miniconda3/envs/pytorch/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 1443, in _shutdown_workers
+    w.join(timeout=_utils.MP_STATUS_CHECK_INTERVAL)
+  File "/home/jyangcu/miniconda3/envs/pytorch/lib/python3.8/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/home/jyangcu/miniconda3/envs/pytorch/lib/python3.8/multiprocessing/popen_fork.py", line 44, in wait
+    if not wait([self.sentinel], timeout):
+  File "/home/jyangcu/miniconda3/envs/pytorch/lib/python3.8/multiprocessing/connection.py", line 930, in wait
+    ready = selector.select(timeout)
+  File "/home/jyangcu/miniconda3/envs/pytorch/lib/python3.8/selectors.py", line 415, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt:
+  7%|███████████▉                                                                                                                                                         | 109/1500 [06:10<1:18:42,  3.40s/it]
+Traceback (most recent call last):
+  File "train_acdc.py", line 435, in <module>
+    main(args.local_rank, args)
+  File "train_acdc.py", line 390, in main
+    Train(args)
+  File "train_acdc.py", line 66, in __init__
+    self.train(args)
+  File "train_acdc.py", line 80, in train
+    loss, inf_flow_all, neg_inf_flow_all, lag_flow, lag_register, forward_regsiter, backward_regsiter = self.RViT(input_vids.to(args.device), hidden)
+KeyboardInterrupt

@@ -41,23 +41,26 @@ class Eval:
         pretrain_params = {k.replace('module.', ''): v for k, v in pretrain_params.items() if k.replace('module.', '') in self.RViT.state_dict()}
         self.RViT.load_state_dict(pretrain_params)
         
-        infos = np.load('./datasets/dataset_utils/ACDC_info.npy', allow_pickle=True).item()
+        infos = np.load('/home/jyangcu/DiffuseMorph/data/ACDC_info.npy', allow_pickle=True).item()
+        # infos = np.load('./datasets/dataset_utils/ACDC_info.npy', allow_pickle=True).item()
         valid_dataset = ACDC_Dataset(args, infos)
         self.valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False, num_workers=1)
         self.SSIM_metric = SSIM(window_size = 8)
         self.PSNR_metric = PSNR()
 
-        self.eval(args)
+        with torch.no_grad():
+            self.eval(args)
 
     def eval(self, args):
         self.RViT.eval()
         record_steps = 0
         all_info = []
-        all_psnr, all_dice, all_ssim, lv_dice, rv_dice, myo_dice, lv_dice = [], [], [], [], [], [], []
+        all_psnr, all_dice, origin_dice, all_ssim, lv_dice, rv_dice, myo_dice, lv_dice = [], [], [], [], [], [], [], []
         pbar = tqdm(self.valid_loader)
         for step, (vids, start_anno, end_anno, es_f) in enumerate(pbar):
+            input_vids = vids.to(args.device)
             hidden = torch.zeros(1, ((args.image_size[0] * args.image_size[1] * args.image_size[2]) // (args.patch_size[0] * args.patch_size[1] * args.patch_size[2])), args.latent_dim).to(args.device)
-            _, inf_flow_all, neg_inf_flow_all, lag_flow, neg_lag_flow, lag_register, forward_regsiter, backward_regsiter = self.RViT(vids.to(args.device), hidden, train=False)
+            _, inf_flow_all, neg_inf_flow_all, lag_flow, neg_lag_flow, lag_register, forward_regsiter, backward_regsiter = self.RViT(input_vids, hidden, train=False)
 
             com_input_vids = vids.squeeze().permute(0,3,1,2)[1:, ...].cpu().mul(255)
             com_lag_register = lag_register.squeeze(0).cpu().mul(255)
@@ -84,43 +87,46 @@ class Eval:
                 # inf_flow_plt = self.plot_warpgrid(vids[0, :, idx, ...], inf_flow_all[idx][0, ...], interval=8, mark='w', heatmap=False)
                 # inf_flow_plt.savefig(f'./results/flow_result_eval/inf_flow_heatmap_warp_{idx}.png', pad_inches=0.0)
                 # inf_flow_plt.clf()
-                
+
                 # For Masks Evaluation
                 if idx == 0:
                     c_mask = start_anno
                 inf_flow_seg_plt, c_mask = self.plot_seg_warpgrid(vids[0, idx+1, ...], c_mask, end_anno, inf_flow_all[idx][0, ...], mark='w')
 
-                if idx == int(es_f[0]) - 2:
+                if idx == int(es_f[0]) - 1:
                     track_segments = c_mask
 
                 # inf_flow_seg_plt.savefig(f'./results/flow_result_eval/inf_flow_seg_warp_{idx}.png',pad_inches=0.0)
                 # inf_flow_seg_plt.clf()
 
             gt_segments = end_anno
-            gt_segments = self.transfor_label(gt_segments)
-            track_segments = self.transfor_label(track_segments)
+            # gt_segments = self.transfor_label(gt_segments)
+            # track_segments = self.transfor_label(track_segments)
             pixel_acc, dice, precision, specificity, recall = self._calculate_overlap_metrics(torch.where(gt_segments > 0, 1, 0), torch.where(track_segments > 0, 1, 0))
+            # all_dice.append(dice.detach().cpu().numpy().item())
+            o_dice = np.mean(self.dice_ACDC(gt_segments, start_anno)[::3])
+            dice = np.mean(self.dice_ACDC(gt_segments, track_segments)[::3])
+            all_dice.append(dice)
+            origin_dice.append(o_dice)
 
-            all_dice.append(dice.detach().cpu().numpy().item())
+            # for i in range(3):
+            #     i_segments_track = track_segments[i, ...]
+            #     i_segments_gt = gt_segments[i, ...]
 
-            for i in range(3):
-                i_segments_track = track_segments[i, ...]
-                i_segments_gt = gt_segments[i, ...]
-
-                _, i_dice, _, _, _ = self._calculate_overlap_metrics(i_segments_gt, i_segments_track)
-                if i == 0:
-                    rv_dice.append(i_dice.detach().cpu().numpy())
-                elif i == 1:
-                    myo_dice.append(i_dice.detach().cpu().numpy())
-                elif i == 2:
-                    lv_dice.append(i_dice.detach().cpu().numpy())
+            #     _, i_dice, _, _, _ = self._calculate_overlap_metrics(i_segments_gt, i_segments_track)
+            #     if i == 0:
+            #         rv_dice.append(i_dice.detach().cpu().numpy())
+            #     elif i == 1:
+            #         myo_dice.append(i_dice.detach().cpu().numpy())
+            #     elif i == 2:
+            #         lv_dice.append(i_dice.detach().cpu().numpy())
             
-            print("Pixel Acc is : ", pixel_acc)
-            print("Dice Score is : ", dice)
-            print("Precision is : ", precision)
-            print("Specificity is : ", specificity)
-            print("Recall is : ", recall)
-            print("ES Frame Number : ", int(es_f[0])-1)
+            # print("Pixel Acc is : ", pixel_acc)
+            # print("Dice Score is : ", dice)
+            # print("Precision is : ", precision)
+            # print("Specificity is : ", specificity)
+            # print("Recall is : ", recall)
+            # print("ES Frame Number : ", int(es_f[0])-1)
             # orginial_imgs = input_vids[0, :, 1:, ...].transpose(0, 1)
             # forward_imgs = torch.stack(forward_regsiter, dim=0)[:, 0, ...].detach().cpu()
             # backward_imgs = torch.stack(backward_regsiter, dim=0)[:, 0, ...].detach().cpu()
@@ -128,13 +134,13 @@ class Eval:
             # combine_imgs = torch.cat([orginial_imgs, forward_imgs, backward_imgs, lag_imgs], dim=0)
             # vutils.save_image(combine_imgs.add(1.0).mul(0.5), os.path.join("results/example_result_eval", f"example_{step}.jpg"), nrow=len(inf_flow_all))
 
-
         print("SSIM: Mean:{}, Std:{}".format(np.mean(all_ssim), np.std(all_ssim)))
         print("PSNR: Mean:{}, Std:{}".format(np.mean(all_psnr), np.std(all_psnr)))
         print("DICE: Mean:{}, Std:{}".format(np.mean(all_dice), np.std(all_dice)))
-        print("RV_DICE: Mean:{}, Std:{}".format(np.mean(rv_dice), np.std(rv_dice)))
-        print("MYO_DICE: Mean:{}, Std:{}".format(np.mean(myo_dice), np.std(myo_dice)))
-        print("LV_DICE: Mean:{}, Std:{}".format(np.mean(lv_dice), np.std(lv_dice)))
+        print("ORIGIN_DICE: Mean:{}, Std:{}".format(np.mean(origin_dice), np.std(origin_dice)))
+        # print("RV_DICE: Mean:{}, Std:{}".format(np.mean(rv_dice), np.std(rv_dice)))
+        # print("MYO_DICE: Mean:{}, Std:{}".format(np.mean(myo_dice), np.std(myo_dice)))
+        # print("LV_DICE: Mean:{}, Std:{}".format(np.mean(lv_dice), np.std(lv_dice)))
 
 
     def plot_warpgrid(self, img, warp, segment_result=None, 
@@ -465,6 +471,56 @@ class Eval:
         LV  = torch.where(seg == 3, 1, 0)
         return torch.stack([RV, MYO, LV], dim=0)
 
+    def dice_ACDC(self, img_gt, img_pred, voxel_size=None):
+        if img_gt.ndim != img_pred.ndim:
+            raise ValueError("The arrays 'img_gt' and 'img_pred' should have the "
+                            "same dimension, {} against {}".format(img_gt.ndim,
+                                                                    img_pred.ndim))
+        # print(np.unique(img_gt))
+        res = []
+        # Loop on each classes of the input images
+        for c in [3, 2, 4, 1, 5]:
+            # Copy the gt image to not alterate the input
+            gt_c_i = np.copy(img_gt)
+
+            if c == 4:
+                gt_c_i[gt_c_i == 2] = c
+                gt_c_i[gt_c_i == 3] = c
+            elif c == 5:
+                gt_c_i[gt_c_i > 0] = c
+            gt_c_i[gt_c_i != c] = 0
+
+            # Copy the pred image to not alterate the input
+            pred_c_i = np.copy(img_pred)
+
+            if c == 4:
+                pred_c_i[pred_c_i == 2] = c
+                pred_c_i[pred_c_i == 3] = c
+            elif c == 5:
+                pred_c_i[pred_c_i > 0] = c
+            pred_c_i[pred_c_i != c] = 0
+
+            # Clip the value to compute the volumes
+            gt_c_i = np.clip(gt_c_i, 0, 1)
+            pred_c_i = np.clip(pred_c_i, 0, 1)
+            # Compute the Dice
+            top = 2 * np.sum(np.logical_and(pred_c_i, gt_c_i))
+            bottom = np.sum(pred_c_i) + np.sum(gt_c_i)
+            bottom = np.maximum(bottom, np.finfo(float).eps)  # add epsilon.
+            dice = top / bottom
+
+            if voxel_size != None:
+                # Compute volume
+                volpred = pred_c_i.sum() * np.prod(voxel_size) / 1000.
+                volgt = gt_c_i.sum() * np.prod(voxel_size) / 1000.
+            else:
+                volpred, volgt = 0, 0
+
+            res += [dice, volpred, volpred-volgt]
+
+        return res
+
+
 def main(rank, args):
 
     def wandb_init():
@@ -538,7 +594,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta2', type=float, default=0.99, help='Adam beta param (default: 0.999)')
     parser.add_argument('--clip-grad', type=bool, default=True, help='perform gradient clipping in training (default: False)')
 
-    parser.add_argument('--enable_GPUs_id', type=list, default=[1], help='The number and order of the enable gpus')
+    parser.add_argument('--enable_GPUs_id', type=list, default=[2], help='The number and order of the enable gpus')
     parser.add_argument('--wandb', type=bool, default=False, help='Enable Wandb')
 
 

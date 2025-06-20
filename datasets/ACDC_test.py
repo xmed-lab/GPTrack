@@ -30,7 +30,7 @@ class ACDC_Dataset(Dataset):
         self.test_dict = infos['test']
         self.all_dict = self.preprocess(is_train)
         self.file_list = list(self.all_dict.keys())
-        self.fineSize = [crop_length, 16, 128, 128]
+        self.fineSize = [crop_length, args.image_size[2], args.image_size[0], args.image_size[1]]
 
         self.transform = transforms.Compose([
                                 transform.ToTensorVideo(),
